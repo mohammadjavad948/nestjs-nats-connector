@@ -9,7 +9,7 @@ mod listener {
         type Pattern: Serialize + DeserializeOwned;
         type RequestData: DeserializeOwned;
 
-        fn handler(connection: &Connection, message: &Message);
+        fn handler(connection: &Connection, message: &Message, data: IncomingRequest<Self::Pattern, Self::RequestData>);
 
         fn get_pattern(&self) -> Self::Pattern;
 
