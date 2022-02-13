@@ -1,17 +1,24 @@
 mod listener {
     use std::error::Error;
-    use async_nats::{Connection, Message};
+    use async_nats::{Connection, Message, Subscription};
     use serde::{Deserialize, Serialize};
     use std::str;
     use serde::de::DeserializeOwned;
     use async_trait::async_trait;
+    use futures::stream::FuturesUnordered;
+    use futures::StreamExt;
 
     #[async_trait]
     pub trait Listener {
         type Pattern: Serialize + DeserializeOwned;
         type RequestData: DeserializeOwned;
 
-        async fn handler(connection: &Connection, message: &Message, data: IncomingRequest<Self::Pattern, Self::RequestData>);
+        async fn handler(
+            &self,
+            connection: &Connection,
+            message: &Message,
+            data: IncomingRequest<Self::Pattern, Self::RequestData>
+        );
 
         fn get_pattern(&self) -> Self::Pattern;
 
@@ -19,7 +26,7 @@ mod listener {
             serde_json::to_string(&self.get_pattern()).unwrap()
         }
 
-        fn deserialize_message_data(&self, message: Message)
+        fn deserialize_message_data(&self, message: &Message)
             -> Result<
                 IncomingRequest<Self::Pattern, Self::RequestData>,
                 Box<dyn Error>
@@ -36,5 +43,38 @@ mod listener {
         pub pattern: Pattern,
         pub id: String,
         pub data: Data,
+    }
+
+    pub async fn listen<T: Listener>(
+        connection: &Connection,
+        listeners: Vec<T>
+    ){
+        let futures = FuturesUnordered::new();
+
+        for list in listeners {
+            let listener =
+                connection.subscribe(&*list.serialize_pattern())
+                    .await
+                    .unwrap();
+
+            futures.push(run_handler(T, listener));
+        }
+
+        futures.collect::<Vec<()>>().await;
+    }
+
+    async fn run_handler<T: Listener>(handler: T, listener: Subscription, connection: &Connection){
+        for message in listener.next().await {
+
+            let deserialize =
+                handler.deserialize_message_data(&message)
+                    .unwrap();
+
+            handler.handler(
+                connection,
+                &message,
+                deserialize
+            ).await;
+        }
     }
 }
