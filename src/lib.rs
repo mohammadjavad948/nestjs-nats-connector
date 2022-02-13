@@ -57,7 +57,7 @@ mod listener {
                     .await
                     .unwrap();
 
-            futures.push(run_handler(T, listener, connection));
+            futures.push(run_handler(list, listener, connection));
         }
 
         futures.collect::<Vec<()>>().await;
