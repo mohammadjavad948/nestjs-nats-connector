@@ -4,12 +4,14 @@ mod listener {
     use serde::{Deserialize, Serialize};
     use std::str;
     use serde::de::DeserializeOwned;
+    use async_trait::async_trait;
 
+    #[async_trait]
     pub trait Listener {
         type Pattern: Serialize + DeserializeOwned;
         type RequestData: DeserializeOwned;
 
-        fn handler(connection: &Connection, message: &Message, data: IncomingRequest<Self::Pattern, Self::RequestData>);
+        async fn handler(connection: &Connection, message: &Message, data: IncomingRequest<Self::Pattern, Self::RequestData>);
 
         fn get_pattern(&self) -> Self::Pattern;
 
