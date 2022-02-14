@@ -59,10 +59,12 @@ mod listener {
     }
 
     async fn run_handler<T: Listener>(handler: T, listener: Subscription, connection: &Connection) {
-        for message in listener.next().await {
-            let deserialize = handler.deserialize_message_data(&message).unwrap();
+        loop {
+            if let Some(message) = listener.next().await {
+                let deserialize = handler.deserialize_message_data(&message).unwrap();
 
-            handler.handler(connection, &message, deserialize).await;
+                handler.handler(connection, &message, deserialize).await;
+            }
         }
     }
 }
