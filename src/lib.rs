@@ -114,3 +114,41 @@ pub mod listener {
         }
     }
 }
+
+pub mod requester {
+    use async_nats::Connection;
+    use serde::{Deserialize, Serialize};
+    use serde::de::DeserializeOwned;
+
+    #[derive(Serialize, Deserialize)]
+    pub struct Request<Pattern, Data> {
+        pub pattern: Pattern,
+        pub id: String,
+        pub data: Data,
+    }
+
+    pub async fn request<
+        Pattern: Serialize + DeserializeOwned,
+        RequestData: Serialize,
+        ResponseData: DeserializeOwned,
+    >(
+        pattern: Pattern,
+        data: RequestData,
+        connection: &Connection,
+    ){
+        let subject = serde_json::to_string(&pattern).unwrap();
+
+        let request = Request {
+            pattern,
+            data,
+            id: uuid::Uuid::new_v4().to_hyphenated().to_string(),
+        };
+
+        let request = serde_json::to_string(&request).unwrap();
+
+        let message = connection.request(
+            &*subject,
+            request
+        ).await.unwrap();
+    }
+}
