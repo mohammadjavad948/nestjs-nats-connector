@@ -1,4 +1,4 @@
-mod listener {
+pub mod listener {
     use async_nats::{Connection, Message, Subscription};
     use async_trait::async_trait;
     use futures::stream::FuturesUnordered;
