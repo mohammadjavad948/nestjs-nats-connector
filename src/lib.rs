@@ -128,6 +128,14 @@ pub mod requester {
         pub data: Data,
     }
 
+    #[derive(Serialize, Deserialize)]
+    pub struct Response<Pattern, Data> {
+        pub pattern: Pattern,
+        pub id: String,
+        pub data: Data,
+        pub isDisposed: bool,
+    }
+
     pub async fn request<
         Pattern: Serialize + DeserializeOwned,
         RequestData: Serialize,
@@ -136,7 +144,7 @@ pub mod requester {
         pattern: Pattern,
         data: RequestData,
         connection: &Connection,
-    ) -> (Message, Request<Pattern, ResponseData>) {
+    ) -> (Message, Response<Pattern, ResponseData>) {
         let subject = serde_json::to_string(&pattern).unwrap();
 
         let request = Request {
@@ -152,7 +160,7 @@ pub mod requester {
             request
         ).await.unwrap();
 
-        let deserialize: Request<Pattern, ResponseData> = serde_json::from_str(
+        let deserialize: Response<Pattern, ResponseData> = serde_json::from_str(
             str::from_utf8(&message.data).unwrap()
         ).unwrap();
 
