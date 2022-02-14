@@ -1,3 +1,5 @@
+// listener module
+// it can subscribe to requests and deserialize it
 pub mod listener {
     use async_nats::{Connection, Message, Subscription};
     use async_trait::async_trait;
@@ -8,11 +10,52 @@ pub mod listener {
     use std::error::Error;
     use std::str;
 
+    // this trait is the core of the entire library
+    // you make listeners by implementing this trait
+    /// # example
+    /// ```rust
+    /// #[derive(Serialize, Deserialize)]
+    /// pub struct Pattern {
+    ///     cmd: String
+    /// }
+    ///
+    /// pub struct Handler {
+    ///
+    /// }
+    ///
+    /// #[async_trait]
+    /// impl Listener for Handler {
+    ///     type Pattern = Pattern;
+    ///     type RequestData = u32;
+    ///
+    ///     async fn handler(
+    ///         &self,
+    ///         connection: &Connection,
+    ///         message: &Message,
+    ///         data: IncomingRequest<Self::Pattern, Self::RequestData>
+    ///     ) {
+    ///         println!("{}", data.id)
+    ///     }
+    ///
+    ///     fn get_pattern(&self) -> Self::Pattern {
+    ///         Pattern {
+    ///             cmd: "dashboard.graph".to_string()
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// impl Handler {
+    ///     pub fn new() -> Handler {
+    ///         Handler { }
+    ///     }
+    /// }
+    /// ```
     #[async_trait]
     pub trait Listener {
         type Pattern: Serialize + DeserializeOwned;
         type RequestData: DeserializeOwned;
 
+        // handles incoming request
         async fn handler(
             &self,
             connection: &Connection,
@@ -20,12 +63,15 @@ pub mod listener {
             data: IncomingRequest<Self::Pattern, Self::RequestData>,
         );
 
+        // get the pattern that subscribes to it
         fn get_pattern(&self) -> Self::Pattern;
 
+        // serialize pattern to string for subject
         fn serialize_pattern(&self) -> String {
             serde_json::to_string(&self.get_pattern()).unwrap()
         }
 
+        // deserialize incoming request
         fn deserialize_message_data(
             &self,
             message: &Message,
