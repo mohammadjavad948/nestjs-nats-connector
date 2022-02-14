@@ -129,11 +129,12 @@ pub mod requester {
     }
 
     #[derive(Serialize, Deserialize)]
-    pub struct Response<Pattern, Data> {
-        pub pattern: Pattern,
+    pub struct Response<Data> {
         pub id: String,
-        pub data: Data,
+        pub err: Option<String>,
+        #[allow(non_snake_case)]
         pub isDisposed: bool,
+        pub response: Data,
     }
 
     pub async fn request<
@@ -144,7 +145,7 @@ pub mod requester {
         pattern: Pattern,
         data: RequestData,
         connection: &Connection,
-    ) -> (Message, Response<Pattern, ResponseData>) {
+    ) -> (Message, Response<ResponseData>) {
         let subject = serde_json::to_string(&pattern).unwrap();
 
         let request = Request {
@@ -160,10 +161,35 @@ pub mod requester {
             request
         ).await.unwrap();
 
-        let deserialize: Response<Pattern, ResponseData> = serde_json::from_str(
+        let deserialize: Response<ResponseData> = serde_json::from_str(
             str::from_utf8(&message.data).unwrap()
         ).unwrap();
 
         return (message, deserialize);
+    }
+
+    pub async fn response<
+        ResponseData: Serialize,
+    >(
+        reply: String,
+        id: String,
+        err: Option<String>,
+        data: ResponseData,
+        connection: &Connection,
+    ) {
+
+        let response = Response {
+            response: data,
+            isDisposed: true,
+            err,
+            id,
+        };
+
+        let response = serde_json::to_string(&response).unwrap();
+
+        connection.publish(
+            &*reply,
+            response
+        ).await.unwrap();
     }
 }
